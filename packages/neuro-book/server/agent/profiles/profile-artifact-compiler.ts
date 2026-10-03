@@ -1171,7 +1171,7 @@ async function validateProfileArtifactDependencies(item: ProfileArtifactManifest
     dependency?: ProfileArtifactDependencyMismatch;
 }> {
     for (const dependency of item.dependencies) {
-        const current = await hashFile(resolveRuntimeArtifactPath(dependency.path, artifactPathContext)).catch(() => null);
+        const current = await hashRuntimeArtifactDependency(dependency.path, artifactPathContext);
         if (!current || current.sha256 !== dependency.sha256 || current.bytes !== dependency.bytes) {
             return {
                 fresh: false,
@@ -1224,6 +1224,22 @@ export async function hashFile(filePath: string): Promise<{sha256: string; bytes
         sha256: createHash("sha256").update(bytes).digest("hex"),
         bytes: bytes.byteLength,
     };
+}
+
+/**
+ * 按当前编译上下文哈希 manifest 记录的依赖；无法读取时返回 null，由调用方判为依赖变化并重编译。
+ * resolveRuntimeArtifactPath 在依赖文件缺失或逻辑根不属于当前运行时时同步抛出，例如 Product 构建
+ * 写下的 `.output/server/...` 随 State Root 进入 Source Dev；这些情况不能中止启动。
+ */
+export async function hashRuntimeArtifactDependency(
+    dependencyPath: string,
+    artifactPathContext: Parameters<typeof resolveRuntimeArtifactPath>[1],
+): Promise<{sha256: string; bytes: number} | null> {
+    try {
+        return await hashFile(resolveRuntimeArtifactPath(dependencyPath, artifactPathContext));
+    } catch {
+        return null;
+    }
 }
 
 function profileCompileConcurrency(fileCount: number): number {
