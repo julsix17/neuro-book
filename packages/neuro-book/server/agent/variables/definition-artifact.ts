@@ -10,6 +10,7 @@ import type {VariableDefinition, VariableNamespace, VariableAccessorIssue} from 
 import {
     createProfileArtifactPathContext,
     hashFile,
+    hashRuntimeArtifactDependency,
     type ProfileArtifactPathContext,
 } from "nbook/server/agent/profiles/profile-artifact-compiler";
 import {generateVariableTypes, VARIABLE_TYPES_FILE_NAME, type VariableTypeGenerationDiagnostic} from "nbook/server/agent/variables/generated-types";
@@ -18,7 +19,6 @@ import {runtimeArtifactBundlePlugin} from "nbook/server/utils/runtime-artifact-b
 import {
     normalizeRuntimeArtifactPath,
     resolveRuntimeArtifactCompilerContext,
-    resolveRuntimeArtifactPath,
     type RuntimeArtifactCompilerContext,
 } from "nbook/server/utils/runtime-artifact-compiler-context";
 import {
@@ -551,7 +551,7 @@ async function validateVariableDefinitionDependencies(
     artifactPathContext: VariableDefinitionArtifactPathContext,
 ): Promise<VariableDefinitionValidation> {
     for (const dependency of item.dependencies) {
-        const current = await hashFile(resolveRuntimeArtifactPath(dependency.path, artifactPathContext)).catch(() => null);
+        const current = await hashRuntimeArtifactDependency(dependency.path, artifactPathContext);
         if (!current || current.sha256 !== dependency.sha256 || current.bytes !== dependency.bytes) {
             return {
                 fresh: false,
